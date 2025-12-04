@@ -2,83 +2,56 @@
 ** EPITECH PROJECT, 2025
 ** my_sudo
 ** File description:
-** Authentication module.
+** Authentication.
 */
 
 #include "./../include/my_sudo.h"
 
-static char *get_shadow_hash(const char *username)
-{
-    FILE *f = fopen("/etc/shadow", "r");
-    char line[1024];
-    char file_user[256];
-    char hash[512];
-
-    if (f == NULL)
-        return NULL;
-    while (fgets(line, sizeof(line), f)) {
-        sscanf(line, "%[^:]:%[^:]:", file_user, hash);
-        if (str_cmp(file_user, username) == 0) {
-            fclose(f);
-            return str_dup(hash);
-        }
-    }
-    fclose(f);
-    return NULL;
-}
-
 static char *read_password(void)
 {
-    char *password = malloc(256);
-    char buffer;
-    int i = 0;
+    char *pwd = malloc(256);
+    int i = 0, r;
 
-    if (password == NULL)
+    if (pwd == NULL)
         return NULL;
-    while (read(0, &buffer, 1) == 1 && buffer != '\n' && i < 255) {
-        password[i++] = buffer;
-    }
-    password[i] = 0;
-    return password;
+    while ((r = read(0, &pwd[i], 1)) > 0 && pwd[i] != '\n' && i < 255)
+        i++;
+    pwd[i] = '\0';
+    return pwd;
 }
 
-static void prompt_password(char *username)
+static int try_auth(const char *hash)
 {
-    write(1, "[my_sudo] password for ", 23);
-    write(1, username, str_len(username));
-    write(1, ": ", 2);
-}
+    char *input = read_password();
+    char *result;
+    int match;
 
-static int try_authenticate(char *shadow_hash)
-{
-    char *input_password = read_password();
-    char *hashed;
-
-    if (input_password == NULL)
+    if (input == NULL)
         return 0;
-    hashed = crypt(input_password, shadow_hash);
-    free(input_password);
-    if (str_cmp(hashed, shadow_hash) == 0)
-        return 1;
-    return 0;
+    result = crypt(input, hash);
+    match = str_cmp(result, hash) == 0;
+    free(input);
+    return match;
 }
 
-int authenticate_user(char *username)
+int authenticate(const char *username)
 {
-    char *shadow_hash = get_shadow_hash(username);
+    char *hash = parse_shadow_hash(username);
+    char prompt[256];
     int attempt;
 
-    if (shadow_hash == NULL)
+    if (hash == NULL)
         return 0;
-    for (attempt = 0; attempt < MAX_PASSWORD_ATTEMPTS; attempt++) {
-        prompt_password(username);
-        if (try_authenticate(shadow_hash)) {
-            free(shadow_hash);
+    for (attempt = 0; attempt < 3; attempt++) {
+        sprintf(prompt, "[my_sudo] password for %s: ", username);
+        write(1, prompt, str_len(prompt));
+        if (try_auth(hash)) {
+            free(hash);
             return 1;
         }
-        if (attempt < MAX_PASSWORD_ATTEMPTS - 1)
-            write(2, "Sorry, try again.\n", 18);
+        if (attempt < 2)
+            write(1, "Sorry, try again.\n", 18);
     }
-    free(shadow_hash);
+    free(hash);
     return 0;
 }

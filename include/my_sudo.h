@@ -2,38 +2,48 @@
 ** EPITECH PROJECT, 2025
 ** my_sudo
 ** File description:
-** Main header for my_sudo.
+** Header file.
 */
 
 #ifndef MY_SUDO_H
-    #define MY_SUDO_H
+#define MY_SUDO_H
 
-    #include <unistd.h>
-    #include <stdlib.h>
-    #include <stdio.h>
-    #include <pwd.h>
-    #include <grp.h>
-    #include <shadow.h>
-    #include <crypt.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <crypt.h>
 
-    #define EXIT_SUCC 0
-    #define EXIT_FAIL 84
-    
-    #define MAX_GROUPS 32
-    #define MAX_PASSWORD_ATTEMPTS 3
+#define EXIT_SUCC 0
+#define EXIT_FAIL 84
 
-typedef struct parsed_args {
+typedef struct {
+    char name[256];
+    uid_t uid;
+    gid_t gid;
+} user_t;
+
+typedef struct {
+    char name[256];
+    gid_t gid;
+} group_t;
+
+typedef struct {
     char *target_user;
     char *target_group;
     char **command;
-} parsed_args_t;
+} args_t;
 
+user_t *parse_passwd_by_uid(uid_t uid);
+user_t *parse_passwd_by_name(const char *name);
+group_t *parse_group_by_name(const char *name);
+char *parse_shadow_hash(const char *username);
+
+int check_sudoers(const char *username, gid_t gid);
+
+int authenticate(const char *username);
+
+int str_cmp(const char *s1, const char *s2);
 int str_len(const char *str);
-int str_cmp(const char *str1, const char *str2);
-char *str_dup(const char *src);
-
-int authenticate_user(char *username);
-int check_sudoers_permission(char *username, uid_t uid,
-    gid_t *groups, int ngroups);
+char *str_dup(const char *str);
 
 #endif
